@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>WebSocket demo</title>
+        <style type="text/css">
+
+        </style>
+    </head>
+    <body>
+        <div class="buttons">
+            <input type="number" id="x" name="movex"><button id="movex">Move X</button>
+            <br /> 
+            <input type="number" id="y" name="movey"><button id="movey">Move Y</button>
+            <br /> 
+            <input type="checkbox" id="down" name="updown"><button id="setdown">Up Down</button>
+            <br /> 
+            <button id="request">Request</button>
+        </div>
+        <div class="state">
+            <span class="users">?</span> online
+        </div>
+        <canvas id="pathCanvas" width="400" height="400" style="border:1px solid #000000;" ></canvas>
+        <script>
+            var movex = document.querySelector('#movex'),
+                movey = document.querySelector('#movey'),
+                setdown = document.querySelector('#setdown'),
+                users = document.querySelector('.users'),
+                request = document.getElementById("request"),
+                canvas = document.getElementById("pathCanvas"),
+                websocket = new WebSocket("ws://127.0.0.1:6789/");
+            var ctx = canvas.getContext("2d");
+            var prev_state = {
+                x: 0,
+                y: 0,
+                down: false,
+                type: "state"
+            };
+            movex.onclick = function (event) {
+                websocket.send(JSON.stringify(
+                {
+                    action: 'movex',
+                    value: document.getElementById("x").value
+                
+                }));
+            }
+            movey.onclick = function (event) {
+                websocket.send(JSON.stringify(
+                {
+                    action: 'movey',
+                    value: document.getElementById("y").value
+                
+                }));
+            }
+            setdown.onclick = function (event) {
+                websocket.send(JSON.stringify(
+                {
+                    action: 'down',
+                    value: document.getElementById("down").checked
+                }));
+            }
+            request.onclick = function (event) {
+                websocket.send(JSON.stringify(
+                {
+                    action: 'request'
+                }));
+            }
+            websocket.onmessage = function (event) {
+                data = JSON.parse(event.data);
+                switch (data.type) {
+                    case 'state':
+                        console.log(data);
+                        if (prev_state.down) {
+                            ctx.beginPath();
+                            ctx.moveTo(prev_state.x, prev_state.y);
+                            ctx.lineTo(data.x, data.y);
+                            ctx.stroke();
+                        }
+                        prev_state = data; 
+                        break;
+                    case 'users':
+                        users.textContent = (
+                            data.count.toString() + " user" +
+                            (data.count == 1 ? "" : "s"));
+                        break;
+                    default:
+                        console.error(
+                            "unsupported event", data);
+                }
+                setInterval(()=>{websocket.send(JSON.stringify(
+                {
+                    action: 'request'
+                }));}, 500);
+            };
+        </script>
+    </body>
+</html>
